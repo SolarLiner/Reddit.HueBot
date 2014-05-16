@@ -4,7 +4,7 @@
 # Ask /u/SolarLiner anything!
 
 import praw, sys
-import datetime
+from datetime import date, time
 
 reddit=praw.Reddit('User-Agent: HueBot/1.0')
 HasLog=False
@@ -51,17 +51,21 @@ except:
 	
 # === Functions ===
 def logWrite(msg):
-	stamp=time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-	print(msg)
-	if HasLog:
-		log.write(stamp+": "+msg+"\n")
+	#stamp=time.strftime("%d %b %Y %H:%M:%S UTC", time.now())
+	stamp = "Message"
+	full="["+stamp+"] "+msg
+	print(full)
+	if HasLog==True:
+		log.write(full+"\n")
 		log.flush()
 		
 def Start():
 	logWrite("Starting bot, loading processed comments")
 
-	for line in fDone:
+	IDs=open("ProcID.log", 'r')
+	for line in IDs:
 		aDone.append(line)
+	IDs.close()
 		
 def TERMINATE(code):
 	logWrite("=== TERMINATED ===")
@@ -70,20 +74,21 @@ def TERMINATE(code):
 def Stop():
 	logWrite("Stopping bot")
 	fDone.close()
+	log.close()
+	HasLog=False
 	TERMINATE(0)
 
 
 	
 def connect():
-	while true:
+	while True:
 		try:
 			logWrite("Attempting to connect ...")
-			reddit.login('HueBot', 'HueHueHuaHueHueHuaHueHueHua')
+			reddit.login('Huehue_Bot', 'HueHueHuaHueHueHuaHueHueHua')
 			logWrite("Connected.")
 			break
 		except:
 			logWrite("Failed to connect.")
-			time.sleep(5)
 
 def generateMessage(level):
 	logWrite("Level" + str(level) + " message to respond")
@@ -97,23 +102,28 @@ def generateMessage(level):
 
 def AddProcComment(ID):
 	aDone.append(ID)
-	fDone.write
+	fDone.write(ID+'\n')
 
 def processQueue():
 	logWrite("==== PROCESSING QUEUE ====")
 	
 	try:
-		for comment in praw.helpers.coment_stream(reddit, 'testing_ground', limit=2500):
+		for comment in praw.helpers.comment_stream(reddit, 'bottesting', limit=1000):
 			if comment.id not in aDone:
 				cDone=False
 				level=0
-				AddProcComment(comment.id)
 				Words = comment.body.lower().split()
 				for word in Words:
 					if "hue" in word:
 						level=0
 						cDone=True
-					elif "huehuahue" or "huehuehue" or "huehuehua" in word:
+					elif "huehuahue" in word:
+						level=1
+						cDone=True
+					elif "huehuehue" in word:
+						level=1
+						cDone=True
+					elif "huehuehua" in word:
 						level=1
 						cDone=True
 					elif "huehuahuehuehua" in word:
@@ -121,6 +131,7 @@ def processQueue():
 						cDone=True
 					
 					if cDone==True:
+						logWrite("Found comment ID "+comment.id)
 						break
 				
 				while cDone==True:
@@ -128,17 +139,21 @@ def processQueue():
 						comment.reply(generateMessage(level))
 						logWrite("Replied to ID "+str(comment.id))
 						cDone=False
+						AddProcComment(comment.id)
 					except praw.errors.RateLimitExceeded:
-						logWrite("Rate limit exceeded. Trying again in 1 minute ...")
-						time.sleep(65)
+						logWrite("Rate limit exceeded. Closing ...")
+						Stop()
+					except praw.errors.APIException:
+						logWrite("Content too old. Moving on.")
+						cDone=False
+						AddProcComment(comment.id)
 	except praw.errors.RedirectException:
 		logWrite("Unexcpected redirection. Attempting to reload ...")
-		time.sleep(3)
 		
 # running part
 
 try:
-	fDone=open("ProcID.log", 'r+')
+	fDone=open("ProcID.log", 'a')
 	aDone = []
 except:
 	logWrite("Error while loading parsed comments. Shutting down.")
@@ -146,6 +161,7 @@ except:
 
 
 Start()
+logWrite("Hello !")
 connect()
 
 while True:
